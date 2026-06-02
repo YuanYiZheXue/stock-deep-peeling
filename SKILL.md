@@ -24,13 +24,21 @@ Layer 2: 报告层 → 三件套(MD+PDF+PNG)+回测图表+校准存档
 | **穿透层** | 九步深度穿透+蹲站框架+9个深度追问+回测校准 | 本技能核心方法论 | 完整穿透报告 |
 | **报告层** | MD+PDF+PNG三件套+回测图表+校准存档 | `scripts/charting/` | 可交付物 |
 
-## 筛选层：执行前必读
+## 筛选层：执行前必读（不可跳过）
 
-**美股**：先调用 `stock-analysis` skill，执行 `analyze_stock.py <ticker> --fast` + `rumor_scanner.py`
-**A股/港股**：使用通达信 `tdx_quotes` + `tdx_kline` 做等效快扫
+第一步自动判断市场：`60xxxx`/`00xxxx`/`30xxxx`/`688xxx`→A股、`hkxxxxx`→港股、英文ticker→美股。
 
-PE>100x且利润萎缩、近5日涨幅>15%、换手率>10% → ⚠️标注，不阻断。
-详细操作见 `references/screening-layer.md`
+| 市场 | 通道 | 操作 |
+|------|------|------|
+| A股 | 通达信快扫 | `tdx_quotes` 取PE/市值/换手 + `tdx_kline` 算异常波动 + 排雷清单 |
+| 港股 | 通达信快扫 | 同上（加 `target=1`） |
+| 美股 | stock-analysis | 加载 skill → `analyze_stock.py <ticker> --fast` |
+
+**没有跳过这一层的选项。** 排雷结果**不阻断**穿透层，但会被写入报告的"反偏见声明"。唯一例外：用户主动要求"快速排雷"且 ⚫ 标记≥2个时自动跳过。
+
+筛选结论输出模板：`【筛选层结论】标的/市场/数据源/排雷结果/是否进入穿透层`
+
+详细操作+排雷清单+阈值+stock-analysis脚本适配说明见 `references/screening-layer.md`
 
 ## 穿透层：核心方法论
 
