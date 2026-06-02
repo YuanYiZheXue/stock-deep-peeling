@@ -11,18 +11,23 @@ description: >
 ## 架构总览
 
 ```
-Layer 0: 筛选层 → 量化快扫（调用 stock-analysis / tdx）
+Layer 0: 筛选层 → 量化快扫
+    ├── 美股：stock-analysis skill (analyze_stock.py --fast)
+    ├── A股：scripts/screening/a_share_screener.py (tdx MCP)
+    └── 港股：scripts/screening/hk_screener.py (tdx MCP target=1)
     ↓ 通过
-Layer 1: 穿透层 → 九步+蹲站+追问+回测（本技能核心）
+Layer 1: 穿透层 → 九步+蹲站+追问+回测（本技能核心，市场无关）
     ↓ 完成
-Layer 2: 报告层 → 三件套(MD+PDF+PNG)+回测图表+校准存档
+Layer 2: 报告层 → 三件套+回测图表+校准存档（市场无关）
 ```
 
-| 层 | 做什么 | 调用谁 | 输出 |
-|----|--------|--------|------|
-| **筛选层** | 量化评分+风险标记+传闻扫描 | `stock-analysis`(美股) / `tdx_quotes`+`tdx_kline`(A股) | ✅进入穿透层 / ❌跳过 |
-| **穿透层** | 九步深度穿透+蹲站框架+9个深度追问+回测校准 | 本技能核心方法论 | 完整穿透报告 |
-| **报告层** | MD+PDF+PNG三件套+回测图表+校准存档 | `scripts/charting/` | 可交付物 |
+| 层 | 美股 | A股 | 港股 |
+|----|------|------|------|
+| **筛选层** | stock-analysis skill | `a_share_screener.py` (tdx) | `hk_screener.py` (tdx) |
+| **穿透层** | 九步+蹲站+追问 (数据源:stock-analysis) | 九步+蹲站+追问 (数据源:tdx/neodata) | 九步+蹲站+追问 (数据源:tdx) |
+| **报告层** | gen_report_pdf.py + backtest_viz | 同左 | 同左 |
+
+> 脚本目录：`scripts/screening/`（三个市场各一个入口），架构说明见 `scripts/screening/README.md`
 
 ## 筛选层：执行前必读（不可跳过）
 
@@ -38,7 +43,8 @@ Layer 2: 报告层 → 三件套(MD+PDF+PNG)+回测图表+校准存档
 
 筛选结论输出模板：`【筛选层结论】标的/市场/数据源/排雷结果/是否进入穿透层`
 
-详细操作+排雷清单+阈值+stock-analysis脚本适配说明见 `references/screening-layer.md`
+详细操作+排雷清单+阈值+市场适配架构见 `references/screening-layer.md`
+完整市场适配说明+各脚本接口见 `scripts/screening/README.md`
 
 ## 穿透层：核心方法论
 

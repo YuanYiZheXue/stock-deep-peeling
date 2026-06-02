@@ -14,11 +14,12 @@
 | 纯英文ticker (AAPL/TSLA) | 美股 | stock-analysis | `analyze_stock.py --fast` |
 | 其他 | 手动判断 | 手工输入代码 | — |
 
-## 通道A：美股（stock-analysis）
+## 通道A：美股（stock-analysis skill）
+
+脚本入口：`scripts/screening/us_screener.py`（桥接 stock-analysis）
+实际执行：加载 stock-analysis skill → `analyze_stock.py <ticker> --fast`
 
 ```bash
-# 加载 stock-analysis skill，执行以下命令：
-
 # 快速量化扫描（--fast 跳过内幕交易+新闻，2-3秒）
 uv run {baseDir}/scripts/analyze_stock.py <ticker> --fast
 
@@ -29,7 +30,7 @@ python3 {baseDir}/scripts/rumor_scanner.py
 python3 {baseDir}/scripts/hot_scanner.py
 ```
 
-> ⚠️ stock-analysis 脚本（analyze_stock.py / rumor_scanner.py / hot_scanner.py）基于 Yahoo Finance API，**仅适用美股和加密货币。不可用于A股/港股。**
+> ⚠️ stock-analysis 脚本基于 Yahoo Finance API，**仅适用美股和加密货币。不可用于A股/港股。**
 
 美股筛选通过标准：
 
@@ -39,9 +40,10 @@ python3 {baseDir}/scripts/hot_scanner.py
 | 风险标记数 | 0-5 | ≤2 |
 | 传闻信号 | M&A/内幕 | 记录但不阻断 |
 
-## 通道B：A股/港股（通达信等效快扫）
+## 通道B：A股（通达信等效快扫）
 
-> stock-analysis 不覆盖A股/港股。以下使用通达信 MCP 工具做等效快扫。
+脚本入口：`scripts/screening/a_share_screener.py`
+执行方式：Agent 按脚本中定义的 MCP 调用序列依次执行 tdx_quotes → tdx_kline → 排雷清单
 
 ### 步骤1：实时行情 + 基础指标
 
@@ -75,6 +77,18 @@ tdx_screener message="<选股条件>" rang="AG"
 → 对扫描结果逐一执行步骤1-3
 ```
 
+## 通道C：港股（通达信 target=1）
+
+脚本入口：`scripts/screening/hk_screener.py`
+和A股流程相同，但 `target=1` + 阈值放宽（港股无涨跌停板、T+0）：
+
+| 信号 | A股阈值 | 港股阈值 | 放宽原因 |
+|------|---------|---------|---------|
+| 近N日涨幅 | 15% | 20% | 无涨跌停板限制 |
+| 换手率 | 10% | 15% | T+0交易 |
+| 20日振幅 | 30% | 40% | 无涨跌停板限制 |
+| 市值门槛 | 50亿 | 100亿HKD | 仙股多、机构不碰小票 |
+
 ---
 
 ## 筛选结论模板（两个通道统一输出）
@@ -92,10 +106,23 @@ tdx_screener message="<选股条件>" rang="AG"
 
 ## stock-analysis 脚本适配说明
 
-stock-analysis 的 `analyze_stock.py` 基于 Yahoo Finance (yfinance)，硬编码美股ticker格式。该脚本**不适合改造适配A股**，原因：
+`analyze_stock.py` 基于 Yahoo Finance (yfinance)，硬编码美股 ticker 格式。
 
-1. A股代码格式（6位数字）与美股ticker（字母）完全不同
-2. A股财报披露格式是CSRC标准，不是SEC EDGAR
-3. A股没有Short Interest/Put-Call Ratio/VIX等美股独有指标
+**不做改造**：A股代码格式（6位数字）与美股 ticker 完全不同；财报是 CSRC 标准而非 SEC EDGAR；A 股无 Short Interest/Put-Call/VIX 等指标。两个通道独立、并行、各管各的市场。
 
-**结论**：A股筛选走通达信通道（tdx_quotes + tdx_kline + tdx_screener），不尝试改造stock-analysis脚本。两个通道并行、独立、各管各的市场。
+## A股 8维评分的等效映射
+
+stock-analysis 的 8 维量化中，A 股通过 tdx 可等效实现的维度：
+
+| stock-analysis 维度 | A股等效数据源 | 可行性 |
+|-------------------|-------------|:--:|
+| 盈利（30%） | tdx_indicator_select → ROE/净利率/毛利率 | ✅ |
+| 基本面（20%） | tdx_api_data → 三大报表 | ✅ |
+| 分析师（20%） | tdx_api_data → 研报评级一致预期 | ✅ |
+| 动量（15%） | tdx_kline → 近N日涨跌幅 | ✅ |
+| 风险（10%） | tdx_quotes → 振幅/换手率 | ✅ |
+| 股息（5%） | tdx_quotes ExtInfo.MGGX | ✅ |
+| 情绪（—） | 无等效（VIX/Put-Call 无 A 股对应） | ❌ |
+| 内幕（—） | 无等效（SEC EDGAR 无 A 股对应） | ❌ |
+
+完整的市场适配架构文档见 `scripts/screening/README.md`
