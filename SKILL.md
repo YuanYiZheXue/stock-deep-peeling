@@ -12,7 +12,7 @@ description: >
 
 ```
 Layer 0: 筛选层 → 量化快扫
-    ├── 美股：stock-analysis skill (analyze_stock.py --fast)
+    ├── 美股：tdx (setcode=74, target=1)
     ├── A股：scripts/screening/a_share_screener.py (tdx MCP)
     └── 港股：scripts/screening/hk_screener.py (tdx MCP target=1)
     ↓ 通过
@@ -31,13 +31,13 @@ Layer 2: 报告层 → 三件套+回测图表+校准存档（市场无关）
 
 ## 筛选层：执行前必读（不可跳过）
 
-第一步自动判断市场：`60xxxx`/`00xxxx`/`30xxxx`/`688xxx`→A股、`hkxxxxx`→港股、英文ticker→美股。
+第一步自动判断市场：`60xxxx`/`00xxxx`/`30xxxx`/`688xxx`→A股、`hkxxxxx`→港股、英文ticker→美股。**三个市场统一走 tdx MCP**（美股用 `setcode=74, target=1`）。
 
 | 市场 | 通道 | 操作 |
 |------|------|------|
 | A股 | 通达信快扫 | `tdx_quotes` 取PE/市值/换手 + `tdx_kline` 算异常波动 + 排雷清单 |
 | 港股 | 通达信快扫 | 同上（加 `target=1`） |
-| 美股 | stock-analysis | 加载 skill → `analyze_stock.py <ticker> --fast` |
+| 美股 | tdx 快扫 | `tdx_lookup_stock(range="MG-GP")` → `tdx_quotes(setcode=74, target=1)` |
 
 **没有跳过这一层的选项。** 排雷结果**不阻断**穿透层，但会被写入报告的"反偏见声明"。唯一例外：用户主动要求"快速排雷"且 ⚫ 标记≥2个时自动跳过。
 

@@ -55,25 +55,33 @@ scripts/
 }
 ```
 
-## 美股通道：代理约束（重要）
+## 美股通道：tdx 直连（已验证）
 
-美股 yfinance 通道需要**代理可达**才能拉取 Yahoo Finance 数据（GFW拦截直连）。
+通达信 MCP 支持美股查询（`setcode=74`，`target=1`），**结构化数据优于 yfinance/WebSearch**。
 
 ```
-yfinance → 代理(http://127.0.0.1:10809) → Yahoo Finance
-                ↑
-         WorkBuddy沙箱默认拦截 localhost 代理端口
-         需要手动开放白名单
+tdx_lookup_stock("AAPL", range="MG-GP") → setcode=74
+        ↓
+tdx_quotes("AAPL", setcode=74, target=1) → PE/市值/EPS/股价
+        ↓
+tdx_kline("AAPL", setcode=74, target=1) → K线 + 振幅
+        ↓
+排雷清单（阈值同A股）
 ```
 
-**双通道设计**：
+| 数据项 | tdx | yfinance | WebSearch |
+|--------|:--:|:--:|:--:|
+| PE (TTM) | ✅ 结构化 | ✅ | 🟡 搜索结果 |
+| 市值 | ✅ | ✅ | 🟡 |
+| EPS | ✅ | ✅ | ❌ |
+| K线/振幅 | ✅ | ✅ | ❌ |
+| 网络要求 | 通达信账户 | 代理+Yahoo | WorkBuddy搜索 |
 
-| 条件 | 通道 | 覆盖 |
-|------|------|------|
-| 代理可达 | yfinance（主通道） | 8维量化 + PE/市值/股息 + 风险检测 |
-| 代理不可达 | WebSearch 降级（备用通道） | 基础PE/市值/最新价（精度降低） |
+实测（2026-06-02）：AAPL PE 40.92x, $306.21, MCap $4.50T — tdx 数据准确。
 
-`us_screener.py` 入口自动检测代理状态，选择对应通道。
+## 美股通道：代理约束（备用）
+
+yfinance 通道仅当 ECN 代理可用且沙箱放行时可用。当前为备用方案。
 
 ## A股等效映射
 
