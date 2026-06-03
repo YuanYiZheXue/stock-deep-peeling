@@ -1,0 +1,8 @@
+*.bak*
+*.new
+*.txt
+__pycache__/
+SKILL.md.bak*
+SKILL.md.new
+SKILL.txt
+OPTIMIZATION_PLAN.md
